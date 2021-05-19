@@ -31,18 +31,18 @@ export const subscribeBars = (
     stream.onclose = () => {
       alert("stream closed");
     };
+
+    const newSub = {
+      channelString,
+      uid,
+      resolution,
+      symbolInfo,
+      lastBar: historyProvider.history[symbolInfo.name].lastBar,
+      listener: updateCb,
+    };
+
+    subs.push(newSub);
   }
-
-  const newSub = {
-    channelString,
-    uid,
-    resolution,
-    symbolInfo,
-    lastBar: historyProvider.history[symbolInfo.name].lastBar,
-    listener: updateCb,
-  };
-
-  subs.push(newSub);
 };
 
 export const unsubscribeBars = (uid, stream) => {
