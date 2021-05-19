@@ -1,38 +1,37 @@
 import { createChannelString } from "./createChannelString";
 import * as historyProvider from "./historyProvider";
 
-const CRYPTO_COMAPRE_SOCKET_URL = `wss://streamer.cryptocompare.com/v2`;
-const socketUrl = `${CRYPTO_COMAPRE_SOCKET_URL}?api_key=${process.env.REACT_APP_CRYPTO_COMPARE_API_KEY}`;
 const subs = [];
 
-const stream = new WebSocket(socketUrl);
+const isStreamOpen = (stream) => stream.readyState === 1;
 
 export const subscribeBars = (
   symbolInfo,
   resolution,
   updateCb,
   uid,
-  resetCache
+  resetCache,
+  stream
 ) => {
   const channelString = createChannelString(symbolInfo);
 
-  stream.addEventListener("open", () => {
-    console.log("stream Opened");
+  // stream is opened, send and listen for messages
+  if (stream && isStreamOpen(stream)) {
+    console.log("Stream Opened");
+
     const addSubMessage = {
       action: "SubAdd",
       subs: [channelString],
     };
 
     stream.send(JSON.stringify(addSubMessage));
-  });
 
-  stream.addEventListener("message", (message) => {
-    processWebSocketMessage(message);
-  });
+    stream.onmessage = processWebSocketMessage;
 
-  stream.addEventListener("close", () => {
-    console.log("stream closed");
-  });
+    stream.onclose = () => {
+      alert("stream closed");
+    };
+  }
 
   const newSub = {
     channelString,
@@ -46,7 +45,7 @@ export const subscribeBars = (
   subs.push(newSub);
 };
 
-export const unsubscribeBars = (uid) => {
+export const unsubscribeBars = (uid, stream) => {
   const subIndex = subs.findIndex((e) => e.uid === uid);
 
   if (subIndex === -1) {
@@ -55,7 +54,7 @@ export const unsubscribeBars = (uid) => {
 
   const sub = subs[subIndex];
 
-  if (stream.readyState === 1) {
+  if (stream && isStreamOpen(stream)) {
     // only remove when stream is connected
     const removeSubMessage = {
       action: "SubRemove",
@@ -111,7 +110,6 @@ const getUpdatedBar = (data, sub) => {
     resolution = 10080;
   }
   const coeff = resolution * 60;
-  // console.log({coeff})
   const rounded = Math.floor(data.ts / coeff) * coeff;
   const lastBarSec = lastBar.time / 1000;
 
@@ -138,4 +136,20 @@ const getUpdatedBar = (data, sub) => {
     updatedLastBar = lastBar;
   }
   return updatedLastBar;
+};
+
+export const createWebsocketConnection = async () => {
+  const CRYPTO_COMAPRE_SOCKET_URL = `wss://streamer.cryptocompare.com/v2`;
+  const socketUrl = `${CRYPTO_COMAPRE_SOCKET_URL}?api_key=${process.env.REACT_APP_CRYPTO_COMPARE_API_KEY}`;
+
+  return new Promise(function (resolve, reject) {
+    var stream = new WebSocket(socketUrl);
+
+    stream.onopen = function () {
+      resolve(stream);
+    };
+    stream.onerror = function (err) {
+      reject(err);
+    };
+  });
 };

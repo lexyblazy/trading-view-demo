@@ -18,6 +18,16 @@ const config = {
 };
 
 export const getDataFeed = async () => {
+  let stream = null;
+
+  try {
+    stream = await streamProvider.createWebsocketConnection();
+  } catch (error) {
+    const message = "Failed to connect to data stream for realtime updates";
+    console.log(message);
+    alert(message);
+  }
+
   return {
     onReady: (cb) => {
       console.log("=====onReady running");
@@ -99,17 +109,19 @@ export const getDataFeed = async () => {
       onResetCacheNeededCallback
     ) => {
       console.log("=====subscribeBars runnning");
+
       streamProvider.subscribeBars(
         symbolInfo,
         resolution,
         onRealtimeCallback,
         subscribeUID,
-        onResetCacheNeededCallback
+        onResetCacheNeededCallback,
+        stream
       );
     },
     unsubscribeBars: (subscriberUID) => {
       console.log("=====unsubscribeBars running");
-      streamProvider.unsubscribeBars(subscriberUID);
+      streamProvider.unsubscribeBars(subscriberUID, stream);
     },
     calculateHistoryDepth: (resolution, resolutionBack, intervalBack) => {
       //optional
